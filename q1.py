@@ -5,7 +5,7 @@ import numpy as np
 class TreeCut:
     def __init__(self, growth_param=5, replanting_cost=100, linear_wood_value=10,
                  maintenance_cost=3, max_height=15, proba_of_dying=.1,
-                 sappling_height=1, gamma=0.9):
+                 sappling_height=1, gamma=1./(1+0.05)):
 
         self.growth_param = growth_param
         self.replanting_cost = replanting_cost
