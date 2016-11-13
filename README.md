@@ -8,3 +8,4 @@ Files are organized according to the questions.
  * q3.py implements two algorithms for optimal policy finding:
     * Value Iteration
     * Policy Iteration
+ * main.py contains scripts for running the other files.
