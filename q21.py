@@ -14,11 +14,10 @@ def alpha(x, a, i):
 
 def q_learning(tree=TreeCut(), epsilon=.1, T_max=1000, n_episodes=100):
     greedy_policies = []
-    rewards = []
-    q_est = pd.DataFrame(
-        np.zeros((len(tree.states), tree.number_of_actions)))
+    rewards = np.zeros(n_episodes)
+    q_est = np.zeros((len(tree.states), tree.number_of_actions))
     for k in range(n_episodes):
-        n_visits = pd.DataFrame(np.zeros((len(tree.states), tree.number_of_actions)))
+        n_visits = np.zeros((len(tree.states), tree.number_of_actions))
         state = 1
         cum_reward = 0
         for t in range(1, T_max):
@@ -27,14 +26,13 @@ def q_learning(tree=TreeCut(), epsilon=.1, T_max=1000, n_episodes=100):
                 # randomize between No cut (0) and Cut (1)
                 action = bernoulli.rvs(0.5)
             else:
-                action = q_est.loc[state, :].argmax()
+                action = q_est[state, :].argmax()
             next_state, reward = tree.tree_sim(state, action)
-            cum_reward += reward
-            delta = reward + tree.gamma * q_est.loc[next_state, :].max() - q_est.loc[state, action]
-            q_est.loc[state, action] += alpha(state, action, n_visits.loc[state, action]) * delta
-            n_visits.loc[state, action] += 1
+            cum_reward += (tree.gamma ** t) * reward
+            delta = reward + tree.gamma * q_est[next_state, :].max() - q_est[state, action]
+            q_est[state, action] += alpha(state, action, n_visits[state, action]) * delta
+            n_visits[state, action] += 1
             state = next_state
-        greedy_policies.append(Policy(pd.Series([q_est.loc[_, :].argmax() for _ in range(len(tree.states))], name=k)))
-        rewards.append(cum_reward)
-    rewards = pd.Series(rewards)
+        greedy_policies.append(Policy(np.array([q_est[_, :].argmax() for _ in range(len(tree.states))])))
+        rewards[k] = cum_reward
     return q_est, greedy_policies, rewards

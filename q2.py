@@ -36,9 +36,9 @@ def monte_carlo_estimator_at_state(initial_state, policy, time_horizon, tree, nu
 
 
 def monte_carlo_by_length(policy, time_horizon, tree, number_of_samples=1000):
-    values = pd.DataFrame(np.zeros((len(tree.states), time_horizon)))
+    values = np.zeros((len(tree.states), time_horizon))
     for state in tree.states:
-        values.loc[state] = monte_carlo_by_length_at_state(state, policy, time_horizon, tree, number_of_samples)
+        values[state] = monte_carlo_by_length_at_state(state, policy, time_horizon, tree, number_of_samples)
     return values
 
 

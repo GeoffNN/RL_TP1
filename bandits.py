@@ -1,7 +1,6 @@
 import arms
-import pandas as pd
 import numpy as np
-from scipy.stats import beta, uniform, bernoulli
+from scipy.stats import bernoulli, beta
 
 
 class Bandit:
@@ -12,7 +11,7 @@ class Bandit:
         if arms is not None:
             self.arms = arms
             self.n_arms = len(arms)
-            self.means = pd.Series([arm.mean for arm in arms])
+            self.means = [arm.mean for arm in arms]
 
     def __add__(self, other):
         return Bandit(arms=self.arms + other.arms)
@@ -21,89 +20,79 @@ class Bandit:
         return self.arms[k].sample()
 
     def UCB1(self, time_horizon=1000):
-        rews = pd.Series(np.zeros(time_horizon))
-        draws = pd.Series(np.zeros(time_horizon))
-        draws_per_bandit = pd.Series(np.zeros(self.n_arms))
-        means = pd.Series(np.zeros(self.n_arms))
+        rews = np.zeros(time_horizon)
+        draws = np.zeros(time_horizon)
+        draws_per_bandit = np.zeros(self.n_arms)
+        means = np.zeros(self.n_arms)
         for t in range(time_horizon):
             if t < self.n_arms:
                 arm_to_play = t
             else:
-                arm_to_play = (means + np.sqrt(np.log(t) / (2 * draws_per_bandit))).argmax()
+                arm_to_play = np.argmax((means + np.sqrt(np.log(t) / (2 * draws_per_bandit))))
 
-            rews.loc[t] = self.sample(arm_to_play)
-            draws_per_bandit.loc[arm_to_play] += 1
-            means.loc[arm_to_play] = ((draws_per_bandit.loc[arm_to_play] - 1) * means.loc[arm_to_play] + rews.loc[
-                t]) / draws_per_bandit.loc[arm_to_play]
-            draws.loc[t] = arm_to_play
+            rews[t] = self.sample(arm_to_play)
+            draws_per_bandit[arm_to_play] += 1
+            means[arm_to_play] = ((draws_per_bandit[arm_to_play] - 1) * means[arm_to_play] +
+                                  rews[t]) / draws_per_bandit[arm_to_play]
+            draws[t] = arm_to_play
 
-        return rews, pd.Series(draws)
+        return rews, draws
 
     def generalTS(self, time_horizon=1000):
-        rews = pd.Series(np.zeros(time_horizon))
-        rew_sum_per_bandit = pd.DataFrame(np.zeros(self.n_arms))
-        draws = pd.Series(np.zeros(time_horizon))
-        draws_per_bandit = pd.Series(np.zeros(self.n_arms))
-        posteriors = [uniform(0, 1) for _ in range(self.n_arms)]
+        # print("Init TS")
+        rews = np.zeros(time_horizon)
+        S = np.zeros(self.n_arms)
+        draws = np.zeros(time_horizon)
+        N = np.zeros(self.n_arms)
+        # print("Begin init loop")
         for t in range(time_horizon):
-            if t < self.n_arms:
-                arm_to_play = t
-            else:
-                arm_to_play = pd.Series([pos.rvs() for pos in posteriors]).argmax()
+            arm_to_play = np.array([beta.rvs(S[a] + 1, N[a] - S[a] + 1)
+                                    for a in range(self.n_arms)]).argmax()
 
-            rews.loc[t] = self.sample(arm_to_play)
-            rew_sum_per_bandit.loc[arm_to_play] += bernoulli.rvs(rews.loc[t])
-            draws_per_bandit.loc[arm_to_play] += 1
-            draws.loc[t] = arm_to_play
-
-            posteriors[arm_to_play] = beta(rew_sum_per_bandit.loc[arm_to_play] + 1,
-                                           draws_per_bandit.loc[arm_to_play] - rew_sum_per_bandit.loc[arm_to_play] + 1)
-
-        return rews, pd.Series(draws)
+            rews[t] = self.sample(arm_to_play)
+            S[arm_to_play] += bernoulli.rvs(rews[t])
+            N[arm_to_play] += 1
+            draws[t] = arm_to_play
+        return rews, draws
 
     def TS(self, time_horizon=100):
-        rews = pd.Series(np.zeros(time_horizon))
-        rew_sum_per_bandit = pd.DataFrame(np.zeros(self.n_arms))
-        draws = pd.Series(np.zeros(time_horizon))
-        draws_per_bandit = pd.Series(np.zeros(self.n_arms))
-        posteriors = [uniform(0, 1) for _ in range(self.n_arms)]
+        # print("Init TS")
+        rews = np.zeros(time_horizon)
+        S = np.zeros(self.n_arms)
+        draws = np.zeros(time_horizon)
+        N = np.zeros(self.n_arms)
+        # print("Begin loop")
         for t in range(time_horizon):
-            if t < self.n_arms:
-                arm_to_play = t
-            else:
-                arm_to_play = pd.Series([pos.rvs() for pos in posteriors]).argmax()
+            arm_to_play = np.array([beta.rvs(S[a] + 1, N[a] - S[a] + 1)
+                                    for a in range(self.n_arms)]).argmax()
+            rews[t] = self.sample(arm_to_play)
+            S[arm_to_play] += rews[t]
+            N[arm_to_play] += 1
+            draws[t] = arm_to_play
 
-            rews.loc[t] = self.sample(arm_to_play)
-            rew_sum_per_bandit.loc[arm_to_play] += rews.loc[t]
-            draws_per_bandit.loc[arm_to_play] += 1
-            draws.loc[t] = arm_to_play
-
-            posteriors[arm_to_play] = beta(rew_sum_per_bandit.loc[arm_to_play] + 1,
-                                           draws_per_bandit.loc[arm_to_play] - rew_sum_per_bandit.loc[arm_to_play] + 1)
-
-        return rews, pd.Series(draws)
+        return rews, draws
 
     def naive(self, time_horizon=1000):
-        rews = pd.Series(np.zeros(time_horizon))
-        draws = pd.Series(np.zeros(time_horizon))
-        draws_per_bandit = pd.Series(np.zeros(self.n_arms))
-        means = pd.Series(np.zeros(self.n_arms))
+        rews = np.zeros(time_horizon)
+        draws = np.zeros(time_horizon)
+        draws_per_bandit = np.zeros(self.n_arms)
+        means = np.zeros(self.n_arms)
         for t in range(time_horizon):
             if t < self.n_arms:
                 arm_to_play = t
             else:
                 arm_to_play = means.argmax()
-            rews.loc[t] = self.sample(arm_to_play)
-            draws_per_bandit.loc[arm_to_play] += 1
-            means.loc[arm_to_play] = ((draws_per_bandit.loc[arm_to_play] - 1) * means.loc[arm_to_play] + rews.loc[
-                t]) / draws_per_bandit.loc[arm_to_play]
-            draws.loc[t] = arm_to_play
+            rews[t] = self.sample(arm_to_play)
+            draws_per_bandit[arm_to_play] += 1
+            means[arm_to_play] = ((draws_per_bandit[arm_to_play] - 1) * means[arm_to_play] + rews[
+                t]) / draws_per_bandit[arm_to_play]
+            draws[t] = arm_to_play
 
         return rews, draws
 
     def complexity(self):
         p_star = max(self.means)
-        return pd.Series([(p_star - p) / self.kl(p, p_star) if p != p_star else 0 for p in self.means]).sum()
+        return np.sum([(p_star - p) / self.kl(p, p_star) if p != p_star else 0 for p in self.means])
 
     def LRlowerbound(self, t):
         return self.complexity() * np.log(t)
