@@ -58,7 +58,7 @@ class ArmBernoulli():
         self.var = p * (1 - p)
         
     def sample(self):
-        reward = random() < self.p
+        reward = int(random() < self.p)
         return reward
 
 
@@ -94,20 +94,20 @@ class ArmExp():
         return reward
 
 
-def simu(p):
-    """
-    draw a sample of a finite-supported distribution that takes value
-    k with porbability p(k)
-    p: a vector of probabilities
-    """
-    q = p.cumsum()
-    u = random()
-    i = 0
-    while u > q[i]:
-        i += 1
-        if i >= len(q):
-            raise ValueError("p does not sum to 1")
-    return i
+    def simu(p):
+        """
+        draw a sample of a finite-supported distribution that takes value
+        k with porbability p(k)
+        p: a vector of probabilities
+        """
+        q = p.cumsum()
+        u = random()
+        i = 0
+        while u > q[i]:
+            i += 1
+            if i >= len(q):
+                raise ValueError("p does not sum to 1")
+        return i
 
 
 class ArmFinite():
